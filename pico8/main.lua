@@ -6,7 +6,7 @@
 -- top-left of the 7x5 board, 16px squares
 local ox, oy = 8, 28
 
--- sfx (see tools/music.lua):
+-- sfx (see tools/scores.lua):
 -- 0 pick up, 1 put down, 2 roll, 3 stack, 4 flag, 5 bump, 6 undo,
 -- 7 solved. one song plays all the time, from pattern 0, on channels
 -- 0-1 (mask 3) so sfx keep 2-3.

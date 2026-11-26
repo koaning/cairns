@@ -1,71 +1,25 @@
 -- Cart smoke test: boots pico8/main.lua against stubbed PICO-8 graphics,
--- input and cartdata, then plays the game through its buttons: start from
--- the title, solve every level with the solver's moves (walking the cursor,
--- picking stones up and sending them), and try undo, restart, the in-game menu
--- (back to levels) and the saved progress along the way.
+-- input and cartdata (tests/pico8_stub.lua), then plays the game through its
+-- buttons: start from the title, solve every level with the solver's moves
+-- (walking the cursor, picking stones up and sending them), and try undo,
+-- restart, the in-game menu (back to levels) and the saved progress along
+-- the way.
 --
 -- Run from the repo root:  luajit tests/cart_smoke.lua
 
-package.path = "tools/?.lua;" .. package.path
-local pico8_env = require("pico8_env")
+package.path = "tests/?.lua;tools/?.lua;" .. package.path
+local stub = require("pico8_stub")
 local solve = require("solve")
 
-local LEFT, RIGHT, UP, DOWN, O, X, PAUSE = 0, 1, 2, 3, 4, 5, 6
-local ENTER = 40
-
-local function noop() end
+local LEFT, RIGHT, UP, DOWN = stub.LEFT, stub.RIGHT, stub.UP, stub.DOWN
+local O, X, PAUSE, ENTER = stub.O, stub.X, stub.PAUSE, stub.ENTER
 
 local function boot(saved)
-  local env = pico8_env.new(".", pico8_env.make_rng(7))
-  local pressed, holding = {}, {}
-  local data = saved or {}
-
-  for _, name in ipairs({ "cls", "rectfill", "rect", "circfill", "circ", "line", "print", "sfx", "music",
-    "ovalfill", "pset", "fillp", "clip", "pal", "cartdata", "menuitem", "poke" }) do
-    rawset(env, name, noop)
-  end
-  rawset(env, "dget", function(i) return data[i] or 0 end)
-  rawset(env, "dset", function(i, v) data[i] = v end)
-  rawset(env, "del", function(t, v)
-    for i = 1, #t do
-      if t[i] == v then return table.remove(t, i) end
-    end
-  end)
-  rawset(env, "ord", function(s, i) return string.byte(s, i or 1) end)
-  rawset(env, "mid", function(a, b, c)
-    if a > b then a, b = b, a end
-    return math.max(a, math.min(b, c))
-  end)
-  rawset(env, "btnp", function(b) return pressed[b] == true end)
-  rawset(env, "btn", function(b) return pressed[b] == true or holding[b] == true end)
-  rawset(env, "sin", function(a) return -math.sin(a * 2 * math.pi) end)
-  rawset(env, "cos", function(a) return math.cos(a * 2 * math.pi) end)
-  -- devkit keyboard: stat(28, 40) is the enter key
-  local keys = {}
-  rawset(env, "stat", function(n, k) return n == 28 and keys[k] == true end)
-  rawset(env, "stop", function(msg) error("cart stop(): " .. tostring(msg)) end)
-
-  local src = assert(io.open("pico8/main.lua")):read("*a")
-  src = src .. "\nfunction __peek() return { scene = scene, st = st, cur = cur, held = held, anim = anim,"
-    .. " intro = intro, outro = outro, won = won, menu = menu, lvl = lvl, moves = #hist } end\n"
-  local chunk = assert(loadstring(src, "@pico8/main.lua"))
-  setfenv(chunk, env)
-  chunk()
-
-  local game = { env = env, data = data }
-
-  function game.frame(buttons, hold, scancodes)
-    pressed, holding, keys = {}, {}, {}
-    for _, k in ipairs(scancodes or {}) do keys[k] = true end
-    for _, b in ipairs(buttons or {}) do pressed[b] = true end
-    for _, b in ipairs(hold or {}) do holding[b] = true end
-    env._update60()
-    env._draw()
-  end
-
-  function game.peek()
-    return env.__peek()
-  end
+  local game = stub.boot({
+    seed = 7,
+    save = saved,
+    peek = { "scene", "st", "cur", "held", "anim", "intro", "outro", "won", "menu", "lvl", "moves = #hist" },
+  })
 
   -- runs frames until the cart is waiting for input again
   function game.settle()
@@ -191,9 +145,9 @@ for lvl = 1, #env.levels do
   assert(s.moves == best, "level " .. lvl .. " moves")
   assert(game.data[lvl] == best, "level " .. lvl .. " fewest moves should be saved")
   assert(game.data[0] == lvl, "level " .. lvl .. " should unlock the next")
-  for _ = 1, 30 do game.frame() end
+  game.wait(30)
   game.frame({ O })
-  for _ = 1, 60 do game.frame() end
+  game.wait(60)
   played = played + 1
 end
 assert(game.peek().scene == "title", "after the last level the game goes back to the title")
