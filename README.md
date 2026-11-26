@@ -3,8 +3,8 @@
 A stone-stacking puzzle for **PICO-8** (128×128, 16 colours): roll mossy
 stones around a little grassy island and stack them into cairns with a flag
 on top. It's a port of the "grassland cairns" look of
-[Snowstack](https://github.com/koaning/ps-love2d/tree/main/games/snowstack),
-with all 17 of its puzzles.
+[Snowstack](https://github.com/koaning/ps-love2d/tree/main/games/snowstack):
+30 puzzles, its 17 plus 13 found with a level generator.
 
 | Cartridge | Gameplay |
 | --- | --- |

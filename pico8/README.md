@@ -12,7 +12,7 @@ The cart is `cairns.p8`, which `#include`s:
 
 | File | What |
 | --- | --- |
-| `levels.lua` | the 17 puzzles: name, fewest moves, board |
+| `levels.lua` | the 30 puzzles: name, fewest moves, board |
 | `rules.lua` | reading a board, rolling, stacking, solved (ported from snowstack) |
 | `main.lua` | title + level select, island and stone renderer, animations, undo, menu, keys, saves, sfx |
 
@@ -55,10 +55,20 @@ is 7 × 5 and has as many big stones as small stones and flags. `make test`
 solves every level with a breadth-first search (`tools/solve.lua`) and fails
 when the fewest-moves number is wrong.
 
+The first 17 levels are snowstack's. The rest came from the generator:
+
+```bash
+luajit tools/genlevels.lua 4000 42 > candidates.txt   # tries, seed (slow: ~10 min)
+```
+
+It places random pieces and trees, keeps boards that are solvable, take a
+few moves per cairn and don't start with a stack ready to make, and prints
+them sorted by fewest moves. Pick, name, and slot them in by difficulty.
+
 ## Saved progress
 
 `cartdata("koaning_cairns")`: `dget(0)` is the highest level solved,
-`dget(1..17)` your fewest moves on each level, `dget(20)` the level played
+`dget(1..30)` your fewest moves on each level, `dget(63)` the level played
 last (the title opens on it).
 
 ## Sound
@@ -70,9 +80,9 @@ last (the title opens on it).
   rolling stone (once per square), a dull tick and thump when stones stack, a
   small bell for a planted flag, a muted thud for a bump, and a slow D major 9
   arpeggio when a level is solved.
-- sfx 8+ and `__music__`: two calm chord loops with no lead melody,
-  "high moor" on the title screen (pattern 0) and "sea breeze" in game
-  (pattern 4). A plucked sine harp arpeggio over a triangle bass.
+- sfx 8+ and `__music__`: "high moor", one calm chord loop with no lead
+  melody that plays all the time (pattern 0). A plucked sine harp arpeggio
+  over a triangle bass.
 
 ```bash
 make music   # rewrite the cart's sound data after editing the scores

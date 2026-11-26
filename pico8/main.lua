@@ -8,12 +8,12 @@ local ox, oy = 8, 28
 
 -- sfx (see tools/music.lua):
 -- 0 pick up, 1 put down, 2 roll, 3 stack, 4 flag, 5 bump, 6 undo,
--- 7 solved. music runs on channels 0-1 (mask 3) so sfx keep 2-3:
--- title song at pattern 0, game song at 4.
+-- 7 solved. one song plays all the time, from pattern 0, on channels
+-- 0-1 (mask 3) so sfx keep 2-3.
 
 -- saved progress:
 -- dget(0) highest level solved, dget(i) your fewest moves on level i
--- (0 = not solved yet), dget(20) the level played last
+-- (0 = not solved yet), dget(63) the level played last
 cartdata("koaning_cairns")
 
 -- how high a piece sits in a stack: on the big stone, on the small one
@@ -48,14 +48,14 @@ local flag_art = {
 local menu_items = { "resume", "back to levels" }
 local confetti_c = { 8, 9, 10, 7, 14 }
 
--- logo letters, 5 rows of pebbles each
+-- logo letters, 8 rows each, drawn 2x as carved stone
 local logo = {
-  { 5, "0111111000110001100001111" },
-  { 5, "0111011011111111101111011" },
-  { 2, "1111111111" },
-  { 5, "1111011011111101101111011" },
-  { 5, "1111011011110111101111011" },
-  { 5, "0111111000011100001111110" },
+  { 6, "011110110011110000110000110000110000110011011110" },
+  { 6, "011110110011110011110011111111110011110011110011" },
+  { 2, "1111111111111111" },
+  { 6, "111110110011110011111110110110110011110011110011" },
+  { 6, "110011111011111111110111110011110011110011110011" },
+  { 6, "011110110011110000011110000011000011110011011110" },
 }
 
 local scene = "title"
@@ -84,7 +84,7 @@ local function ok()
 end
 music(0, 0, 3)
 
-local lvl = mid(1, dget(20), #levels)
+local lvl = mid(1, dget(63), #levels)
 local st, hist = nil, {}
 local cur = { x = 1, y = 1 }
 local held = nil
@@ -92,6 +92,8 @@ local anim = nil
 local intro, outro = nil, nil
 local won = nil
 local shake = nil
+-- a stone that stopped against something: { x, y, dx, dy, t, id }
+local hit = nil
 local menu = nil
 local xhold = 0
 local spin = {}
@@ -124,14 +126,14 @@ end
 local function start_level(n, drop)
   lvl = n
   st = rules_parse(levels[n][3])
-  hist, held, anim, won, shake, menu, outro = {}, nil, nil, nil, nil, nil, nil
+  hist, held, anim, won, shake, menu, outro, hit = {}, nil, nil, nil, nil, nil, nil, nil
   intro = drop and 0 or nil
   spin, bits = {}, {}
   for p in all(st.pieces) do
     spin[p.id] = { 0, 0 }
   end
   cur = { x = st.pieces[1].x, y = st.pieces[1].y }
-  dset(20, n)
+  dset(63, n)
 end
 
 local function restart()
@@ -152,13 +154,11 @@ end
 
 local function to_title()
   scene, menu = "title", nil
-  music(0, 300, 3)
 end
 
 local function play(n)
   scene = "play"
   start_level(n, true)
-  music(4, 300, 3)
 end
 
 local function solved()
@@ -194,7 +194,9 @@ local function land()
       sfx(3)
     end
   else
-    sfx(1)
+    sfx(3)
+    -- whatever stopped it sways, the stone squashes against it
+    hit = { x = m.x + m.dx, y = m.y + m.dy, dx = m.dx, dy = m.dy, t = 18, id = p.id }
   end
   if rules_solved(st) then solved() end
 end
@@ -229,8 +231,8 @@ local function update_title()
   local d = 0
   if btnp(0) then d = -1 end
   if btnp(1) then d = 1 end
-  if btnp(2) then d = -6 end
-  if btnp(3) then d = 6 end
+  if btnp(2) then d = -10 end
+  if btnp(3) then d = 10 end
   if d ~= 0 then
     local to = lvl + d
     if to >= 1 and to <= #levels then
@@ -266,6 +268,10 @@ local function update_play()
   if shake then
     shake.t = shake.t - 1
     if shake.t <= 0 then shake = nil end
+  end
+  if hit then
+    hit.t = hit.t - 1
+    if hit.t <= 0 then hit = nil end
   end
 
   if intro then
@@ -385,9 +391,11 @@ local function cprint(s, y, c)
   print(s, flr((128 - text_w(s)) / 2), y, c)
 end
 
-local function draw_pix(list, x, y)
+-- lean shifts the top of the art sideways, the bottom stays planted
+local function draw_pix(list, x, y, lean)
+  local h = list[#list][2]
   for q in all(list) do
-    pset(x + q[1], y + q[2], q[3])
+    pset(x + q[1] + flr((lean or 0) * (h - q[2]) / h + 0.5), y + q[2], q[3])
   end
 end
 
@@ -412,8 +420,8 @@ end
 
 -- a stone, front view: centre x, the y it rests on, big or small,
 -- and how far its moss has turned
-local function draw_stone(cx, by, big, sp)
-  local rx, ry = big and 7 or 5, big and 5 or 4
+local function draw_stone(cx, by, big, sp, sx, sy)
+  local rx, ry = (big and 7 or 5) - (sx or 0), (big and 5 or 4) - (sy or 0)
   local cy = by - ry
   ovalfill(cx - rx, cy - ry, cx + rx, cy + ry, 5)
   ovalfill(cx - rx + 1, cy - ry + 1, cx + rx - 1, cy + ry - 1, 13)
@@ -432,12 +440,25 @@ local function draw_stone(cx, by, big, sp)
 end
 
 -- one piece standing at cx, by (its square's resting y)
-local function draw_piece(p, cx, by, waving)
+local function draw_piece(p, cx, by, waving, lean, sx, sy)
   if p.kind == "h" then
-    draw_pix(flag_art[waving and flr(frame / 12) % 2 + 1 or 1], cx - 1, by - 12)
+    if not p.stack and not (anim and anim.p == p) then
+      -- planted in a little mound of earth
+      ovalfill(cx - 3, by - 1, cx + 3, by + 1, 4)
+      line(cx - 2, by - 1, cx, by - 1, 15)
+    end
+    draw_pix(flag_art[waving and flr(frame / 12) % 2 + 1 or 1], cx - 1, by - 12, lean)
   else
-    draw_stone(cx, by, p.kind == "l", spin[p.id] or { 0, 0 })
+    draw_stone(cx + flr(lean / 3 + 0.5), by, p.kind == "l", spin[p.id] or { 0, 0 }, sx, sy)
   end
+end
+
+-- how a square sways after a stone hit it: sideways for a hit from the
+-- side, a little dip for a hit from the front or back
+local function sway(x, y)
+  if not hit or hit.x ~= x or hit.y ~= y then return 0, 0 end
+  local k = hit.t / 18 * cos((18 - hit.t) / 9)
+  return hit.dx * 4 * k, abs(hit.dy * k) > 0.4 and 1 or 0
 end
 
 -- how far a square's things have flown off the top of the screen
@@ -524,12 +545,20 @@ local function draw_things()
       ovalfill(cx - 6, by - 1, cx + 6, by + 2, 3)
     end
     by = by + off
+    local lean, dip = sway(e[2], e[3])
+    by = by + dip
     if not p then
-      draw_pix(tree_art, cx - 6, by - 16)
+      draw_pix(tree_art, cx - 6, by - 16, lean)
     else
+      local sx, sy = 0, 0
+      if hit and hit.id == p.id and hit.t > 12 then
+        sx, sy = abs(hit.dx), abs(hit.dy)
+        cx = cx + hit.dx
+      end
       if shake and shake.id == p.id then cx = cx + sin(shake.t / 6) * 2 end
       if held == p.id and not anim then by = by - 1 - flr(frame / 10) % 2 end
-      draw_piece(p, cx, by - e[5], p.stack == "lmh")
+      -- a stack sways more the higher up a piece is
+      draw_piece(p, cx, by - e[5], p.stack == "lmh", lean * (1 + e[5] / 15), sx, sy)
     end
   end
 end
@@ -606,18 +635,23 @@ local function draw_play()
   end
 end
 
--- the logo's pebbles, 3px apart, drawn in passes so they merge
-local pebbles = {}
-local lx = 17
+-- the logo's pixels: { x, y, top edge, bottom edge }, 2x2 each
+local logo_px = {}
+local lx = 22
 for g in all(logo) do
-  local w = g[1]
-  for i = 0, #g[2] - 1 do
-    if sub(g[2], i + 1, i + 1) == "1" then
-      add(pebbles, { lx + (i % w) * 3, 20 + flr(i / w) * 3 })
+  local w, bits = g[1], g[2]
+  local function on(i, j)
+    return j >= 0 and j < 8 and sub(bits, j * w + i + 1, j * w + i + 1) == "1"
+  end
+  for j = 0, 7 do
+    for i = 0, w - 1 do
+      if on(i, j) then
+        add(logo_px, { lx + i * 2, 14 + j * 2, not on(i, j - 1), not on(i, j + 1) })
+      end
     end
   end
   if w == 2 then flag_x = lx + 1 end
-  lx = lx + w * 3 + 3
+  lx = lx + w * 2 + 4
 end
 
 local function draw_title()
@@ -626,39 +660,40 @@ local function draw_title()
     pset(p.x, p.y, 7)
   end
 
-  -- the logo, in pebbles, with a flag on the i
+  -- the logo, carved stone with moss on top, and a flag on the i
   for pass = 1, 3 do
-    for q in all(pebbles) do
+    for q in all(logo_px) do
       local x, y = q[1], q[2]
       if pass == 1 then
-        circfill(x, y + 1, 2, 1)
+        rectfill(x - 1, y - 1, x + 2, y + 4, 1)
       elseif pass == 2 then
-        circfill(x, y, 2, 5)
+        rectfill(x, y, x + 1, y + 1, q[4] and 5 or 6)
       else
-        circfill(x, y, 1, 6)
-        pset(x - 1, y - 1, 7)
+        if q[3] then
+          line(x, y, x + 1, y, (x * 7 + y) % 5 < 2 and 11 or 7)
+        end
+        if q[4] then line(x, y + 1, x + 1, y + 1, 13) end
       end
     end
   end
-  draw_pix(flag_art[flr(frame / 12) % 2 + 1], flag_x, 4)
+  draw_pix(flag_art[flr(frame / 12) % 2 + 1], flag_x, 1)
   cprint("roll stones, plant flags", 41, 1)
 
   -- the level grid
   local n = unlocked()
-  panel(8, 50, 119, 104)
+  panel(5, 48, 122, 100)
   for i = 1, #levels do
-    local cx, cy = 13 + (i - 1) % 6 * 17, 55 + flr((i - 1) / 6) * 16
+    local cx, cy = 9 + (i - 1) % 10 * 11, 53 + flr((i - 1) / 10) * 15
     local open = i <= n
-    rectfill(cx, cy, cx + 14, cy + 12, open and 11 or 6)
+    rectfill(cx, cy, cx + 9, cy + 12, i == lvl and 10 or open and 11 or 6)
     if i == lvl then
-      rectfill(cx, cy, cx + 14, cy + 12, 10)
-      corners(cx - 1, cy - 1, cx + 15, cy + 13, 2, frame % 40 < 20 and 8 or 2)
+      corners(cx - 1, cy - 1, cx + 10, cy + 13, 2, frame % 40 < 20 and 8 or 2)
     end
     local s = tostr(i)
-    print(s, cx + 8 - #s * 2, cy + 4, open and 3 or 13)
+    print(s, cx + 6 - #s * 2, cy + 6, open and 3 or 13)
     if dget(i) > 0 then
-      line(cx + 1, cy + 1, cx + 1, cy + 5, 4)
-      line(cx + 2, cy + 1, cx + 3, cy + 2, 8)
+      line(cx + 1, cy + 1, cx + 1, cy + 4, 4)
+      line(cx + 2, cy + 1, cx + 3, cy + 1, 8)
       pset(cx + 2, cy + 2, 8)
     end
   end

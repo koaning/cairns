@@ -2,8 +2,9 @@
 -- (`make screenshots`). It presses the buttons for a player and saves:
 --
 --   pico8-cart.png    the title screen with some levels solved
---   pico8.png         level 7 with one cairn built and a stone picked up
---   with --all also:  pico8-solved.png, pico8-menu.png
+--   pico8.png         level 9 with one cairn built and a stone picked up
+--   with --all also:  pico8-solved.png, pico8-menu.png, pico8-hit.png (a
+--                     stone that just stopped against something)
 --   with --label:     the title screen as __label__ text (tools/label.lua)
 --
 -- The moves come from tools/solve.lua (copied into the .love), run on the
@@ -15,8 +16,8 @@ local solve = require("solve")
 local shots = {}
 shots.__index = shots
 
--- levels 1-6 solved, on level 7
-local SAVE = { [0] = 6, 2, 4, 6, 7, 9, 10, [20] = 7 }
+-- levels 1-8 solved, on level 9
+local SAVE = { [0] = 8, 2, 4, 6, 7, 7, 8, 9, 10, [63] = 9 }
 
 -- finds a local of the cart by name among the upvalues of its callbacks
 local function peek(env, name)
@@ -88,7 +89,7 @@ function shots:start(env)
 
     frame({ O })
     settle()
-    local _, path = solve(env, env.rules_parse(env.levels[7][3]))
+    local _, path = solve(env, env.rules_parse(env.levels[9][3]))
     local i = 1
     while env.rules_cairns(peek(env, "st")) < 1 do
       pick_up(path[i])
@@ -111,11 +112,17 @@ function shots:start(env)
       frame({ UP })
       frame({ O })
       frame(nil, 5)
+      local hit_shot = false
       while i <= #path do
         pick_up(path[i])
         local s = path[i]
         frame({ s[3] < 0 and LEFT or s[3] > 0 and RIGHT or s[4] < 0 and UP or DOWN })
         settle()
+        if not hit_shot and peek(env, "hit") then
+          frame(nil, 3)
+          shot("pico8-hit.png")
+          hit_shot = true
+        end
         i = i + 1
       end
       frame(nil, 40)

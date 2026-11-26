@@ -5,10 +5,9 @@
 --   luajit tools/music.lua --check      fail if the cart is out of date
 --
 -- sfx 0-7 are the sound effects (the `effects` table below), sfx 8+ the
--- background music: two calm, original chord loops for an island in the
--- wind (open maj7 voicings, sus4 lifts):
---   title  "high moor"   music(0)  G major
---   game   "sea breeze"  music(G)  D major
+-- background music: one calm, original chord loop for an island in the
+-- wind (open maj7 voicings, sus4 lifts), "high moor" in G major, music(0),
+-- played on the title screen and in game alike.
 -- No lead melody: a soft plucked sine harp arpeggio on channel 0 and a
 -- root/fifth triangle bass on channel 1. Channels 2-3 stay free for sfx.
 
@@ -35,8 +34,7 @@ local chord_tones = {
 -- Pitches are PICO-8 tracker notes (c0 is the lowest). Waves: 0 sine,
 -- 1 triangle, 2 saw, 3 square, 4 pulse, 5 organ, 6 noise, 7 phaser.
 -- Effects: 0 none, 1 slide, 2 vibrato, 3 drop, 4 fade in, 5 fade out.
--- Kept soft and low: mostly sine tones at volume 1-3 with fades, in the key
--- of the game song (D major), and stone sounds made of a dull noise tick
+-- Kept soft and low: mostly sine tones at volume 1-3 with fades, and stone sounds made of a dull noise tick
 -- over a low falling triangle rather than bright blips.
 local effects = {
   -- a quiet sine lift, and the same falling back
@@ -52,9 +50,9 @@ local effects = {
   { name = "bump", speed = 5, notes = "a0:1:3:3 a0:1:1:5" },
   -- a soft downward glide
   { name = "undo", speed = 3, notes = "e3:0:2:0 b2:0:2:1 b2:0:1:5" },
-  -- a slow, quiet D major 9 arpeggio
+  -- a slow, quiet G major 9 arpeggio, in the key of the song
   { name = "solved", speed = 10,
-    notes = "d2:0:3:0 a2:0:3:0 e3:0:3:0 f#3:0:3:0 c#4:0:2:0 c#4:0:2:2 c#4:0:1:2 c#4:0:1:5" },
+    notes = "g2:0:3:0 d3:0:3:0 a3:0:3:0 b3:0:3:0 f#4:0:2:0 f#4:0:2:2 f#4:0:1:2 f#4:0:1:5" },
 }
 
 -------------------------------------------------------------------------------
@@ -62,7 +60,7 @@ local effects = {
 -------------------------------------------------------------------------------
 local songs = {
   {
-    name = "title", title = "high moor", speed = 50,
+    name = "song", title = "high moor", speed = 50,
     patterns = {
       a = { "gmaj7", "em7", "cmaj7", "dsus4/d7" },
       a2 = { "gmaj7", "bm7", "cmaj7", "am7/d7" },
@@ -70,17 +68,6 @@ local songs = {
       coda = { "gmaj7", "cmaj7", "am7/d7", "gmaj" },
     },
     order = { "a", "a2", "b", "coda" },
-  },
-  {
-    name = "game", title = "sea breeze", speed = 44,
-    patterns = {
-      a = { "dmaj7", "gmaj7", "dmaj7", "em7/a7" },
-      a2 = { "dmaj7", "bm7", "gmaj7/gm6", "em7/a7" },
-      b = { "gmaj7", "f#m7", "em7", "a7" },
-      b2 = { "cmaj7", "gmaj7", "cmaj7", "asus4/amaj" },
-      coda = { "dmaj7", "gmaj7", "em7/a7", "dmaj" },
-    },
-    order = { "a", "a2", "b", "b2", "a", "coda" },
   },
 }
 
@@ -254,12 +241,12 @@ if arg[1] == "--check" then
     os.exit(1)
   end
   local main = read("pico8/main.lua")
-  if not main:find("music%(" .. starts.game .. ",") then
-    io.stderr:write("pico8/main.lua should call music(" .. starts.game .. ", ...) for the game song\n")
+  if not main:find("music%(" .. starts.song .. ",") then
+    io.stderr:write("pico8/main.lua should call music(" .. starts.song .. ", ...) for the song\n")
     os.exit(1)
   end
-  print(string.format("music  %d patterns (game starts at %d), sfx %d-%d, up to date",
-    #music, starts.game, FIRST_SFX, FIRST_SFX + #sfx - 1))
+  print(string.format("music  %d patterns, sfx %d-%d, up to date",
+    #music, FIRST_SFX, FIRST_SFX + #sfx - 1))
 else
   if new ~= src then
     local f = assert(io.open(CART, "wb"))
@@ -267,5 +254,5 @@ else
     f:close()
     print("updated " .. CART)
   end
-  print("game music starts at pattern " .. starts.game)
+  print("the song starts at pattern " .. starts.song)
 end

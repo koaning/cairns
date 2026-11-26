@@ -207,7 +207,7 @@ assert(game.peek().scene == "title", "back to levels should go to the title")
 
 -- saved progress survives a reboot: start on the last level played
 local again = boot(game.data)
-assert(again.peek().lvl == game.data[20], "the title should open on the last level played")
+assert(again.peek().lvl == game.data[63], "the title should open on the last level played")
 again.frame({ O })
 assert(again.peek().scene == "play", "a solved level can be played again")
 

@@ -140,7 +140,7 @@ function tests.copy_is_independent(env)
 end
 
 function tests.every_level_is_7x5_with_matching_pieces(env)
-  assert_eq(#env.levels, 17)
+  assert_eq(#env.levels, 30)
   for i, lv in ipairs(env.levels) do
     local st = env.rules_parse(lv[3])
     assert_eq(st.w, env.board_w, "level " .. i .. " width")
