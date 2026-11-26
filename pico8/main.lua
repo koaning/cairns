@@ -45,7 +45,7 @@ local flag_art = {
   pix("a|4888|48888|488888|48822|4|4|4|4|4|4|4|4"),
   pix("a|4.888|488888|48888|4822|4|4|4|4|4|4|4|4"),
 }
-local menu_items = { "resume", "undo", "restart", "level select" }
+local menu_items = { "resume", "undo", "restart", "back to levels" }
 local confetti_c = { 8, 9, 10, 7, 14 }
 
 -- logo letters, 5 rows of pebbles each
@@ -60,6 +60,26 @@ local logo = {
 
 local scene = "title"
 local flag_x = 0
+
+-- keys: enter works like 🅾️, and the pause button (p, or start on a
+-- gamepad) opens the cart's own menu instead of pico-8's. pico-8 reports
+-- enter as the pause button too, so the raw keyboard (devkit mode,
+-- scancode 40 = enter, 88 = keypad enter) tells the two apart.
+poke(0x5f2d, 1)
+local enter, enter_was, pause, pause_was = false, false, false, false
+
+local function read_keys()
+  local down, p = stat(28, 40) or stat(28, 88), btn(6)
+  enter = down and not enter_was
+  pause = p and not pause_was and not down
+  enter_was, pause_was = down, p
+  if p then poke(0x5f30, 1) end
+end
+
+-- 🅾️ or enter
+local function ok()
+  return btnp(4) or enter
+end
 music(0, 0, 3)
 
 local lvl = mid(1, dget(20), #levels)
@@ -216,7 +236,7 @@ local function update_title()
       sfx(0)
     end
   end
-  if btnp(4) then
+  if ok() then
     if lvl <= n then
       play(lvl)
     else
@@ -232,8 +252,8 @@ local function update_menu()
   end
   if btnp(2) then menu.row = (menu.row - 2) % #menu_items + 1 end
   if btnp(3) then menu.row = menu.row % #menu_items + 1 end
-  if btnp(5) then menu = nil return end
-  if btnp(4) then
+  if btnp(5) or pause then menu = nil return end
+  if ok() then
     local r = menu.row
     menu = nil
     if r == 2 then undo() end
@@ -254,7 +274,7 @@ local function update_play()
 
   if intro then
     intro = intro + 1
-    if intro % 5 == 1 and intro < 30 then sfx(1) end
+    if intro % 10 == 1 and intro < 30 then sfx(1) end
     if intro > 40 then intro = nil end
     return
   end
@@ -286,10 +306,16 @@ local function update_play()
   end
   if won then
     won = won + 1
-    if won > 110 or (won > 20 and btnp(4)) then
+    if won > 110 or (won > 20 and ok()) then
       outro = 0
       won = nil
     end
+    return
+  end
+
+  if pause then
+    menu = { row = 1 }
+    sfx(0)
     return
   end
 
@@ -317,7 +343,7 @@ local function update_play()
     end
   end
 
-  if btnp(4) then
+  if ok() then
     local p = rules_movable_at(st, cur.x, cur.y)
     if held then
       held = nil
@@ -333,6 +359,7 @@ end
 
 function _update60()
   frame = frame + 1
+  read_keys()
   for p in all(pollen) do
     p.x, p.y = (p.x + p.s) % 128, (p.y + sin(frame / 200 + p.s) * 0.1) % 128
   end
@@ -526,9 +553,9 @@ local function draw_hud()
   elseif rules_movable_at(st, cur.x, cur.y) then
     hint = "\142 pick up the " .. names[rules_movable_at(st, cur.x, cur.y).kind]
   elseif #hist > 0 then
-    hint = "\151 undo   hold \151: menu"
+    hint = "\151 undo   hold \151 or p: menu"
   elseif not intro then
-    hint = "find a stone   hold \151: menu"
+    hint = "find a stone  hold \151 or p: menu"
   end
   if xhold > 4 and not menu then
     rectfill(0, 119, xhold * 6.4, 119, 10)
@@ -573,12 +600,12 @@ local function draw_play()
     cprint(n <= best and "the fewest there are!" or "it can be done in " .. best, y + 13, n <= best and 8 or 13)
   end
   if menu then
-    panel(30, 40, 97, 82)
+    panel(26, 40, 101, 82)
     for i = 1, #menu_items do
       local y = 37 + i * 9
       local on = i == menu.row
-      if on then print("\145", 34, y, 8) end
-      print(menu_items[i], 44, y, on and 1 or 13)
+      if on then print("\145", 30, y, 8) end
+      print(menu_items[i], 40, y, on and 1 or 13)
     end
   end
 end
@@ -645,10 +672,8 @@ local function draw_title()
   local lv = levels[lvl]
   if lvl <= n then
     local mine = dget(lvl)
-    local s = "fewest " .. lv[2]
-    if mine > 0 then s = s .. "   yours " .. mine end
     cprint(lv[1], 109, 7)
-    cprint(s, 115, 13)
+    cprint(mine > 0 and "solved in " .. mine .. " moves" or "not solved yet", 115, 13)
     cprint("\142 play", 121, 10)
   else
     cprint("solve " .. (lvl - 1) .. " to open it", 115, 6)
@@ -663,9 +688,3 @@ function _draw()
   end
 end
 
-menuitem(1, "restart level", function()
-  if scene == "play" then restart() end
-end)
-menuitem(2, "level select", function()
-  if scene == "play" then to_title() end
-end)

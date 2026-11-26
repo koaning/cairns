@@ -244,7 +244,7 @@ end
 -------------------------------------------------------------------------------
 local KEYS = {
   [0] = { "left" }, { "right" }, { "up" }, { "down" },
-  { "z", "c", "n", "return", "space" }, { "x", "v", "m" },
+  { "z", "c", "n", "return", "kpenter", "space" }, { "x", "v", "m" }, { "p", "escape" },
 }
 local held_frames = {}
 -- `--shots <dir>`: a scripted run (shots.lua) presses the buttons instead
@@ -259,7 +259,7 @@ local function button_down(i)
 end
 
 local function update_buttons()
-  for i = 0, 5 do
+  for i = 0, 6 do
     held_frames[i] = button_down(i) and (held_frames[i] or 0) + 1 or 0
   end
 end
@@ -267,7 +267,7 @@ end
 local function btn(i)
   if i == nil then
     local mask = 0
-    for b = 0, 5 do
+    for b = 0, 6 do
       if held_frames[b] > 0 then mask = mask + 2 ^ b end
     end
     return mask
@@ -431,6 +431,8 @@ local function make_env()
     cartdata = cartdata, dget = dget, dset = dset,
     -- PICO-8's pause menu isn't emulated; carts should offer their own way in
     menuitem = function() end,
+    -- memory isn't emulated: draw-state and devkit pokes are no-ops
+    poke = function() end, peek = function() return 0 end,
     printh = function(...) print(...) end,
     add = function(t, v) t[#t + 1] = v; return v end,
     del = function(t, v)
@@ -471,6 +473,8 @@ local function make_env()
     time = function() return love.timer.getTime() - start_time end,
     stat = function(n)
       if n == 1 or n == 0 then return instructions / frame_budget end
+      -- devkit keyboard: enter is already button 4 here, so no raw keys
+      if n == 28 or n == 30 then return false end
       if n == 7 then return 60 end
       return 0
     end,

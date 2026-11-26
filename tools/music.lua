@@ -35,16 +35,26 @@ local chord_tones = {
 -- Pitches are PICO-8 tracker notes (c0 is the lowest). Waves: 0 sine,
 -- 1 triangle, 2 saw, 3 square, 4 pulse, 5 organ, 6 noise, 7 phaser.
 -- Effects: 0 none, 1 slide, 2 vibrato, 3 drop, 4 fade in, 5 fade out.
+-- Kept soft and low: mostly sine tones at volume 1-3 with fades, in the key
+-- of the game song (D major), and stone sounds made of a dull noise tick
+-- over a low falling triangle rather than bright blips.
 local effects = {
-  { name = "pick up", speed = 3, notes = "e2:1:5:0 a2:1:5:0 e3:1:4:5" },
-  { name = "put down", speed = 3, notes = "e3:1:4:0 a2:1:4:0 e2:1:3:5" },
-  { name = "roll", speed = 4, notes = "c1:6:4:0 a0:6:3:0 c1:6:2:5" },
-  { name = "stack", speed = 3, notes = "g1:1:6:0 d1:1:5:0 c1:6:4:0 c1:6:2:5" },
-  { name = "flag", speed = 5, notes = "c3:5:5:0 e3:5:5:0 g3:5:5:0 c4:5:5:0 c4:5:4:0 c4:5:2:5" },
-  { name = "bump", speed = 4, notes = "c1:2:5:0 a#0:2:4:0 a0:2:3:5" },
-  { name = "undo", speed = 3, notes = "g3:1:4:0 e3:1:4:0 c3:1:3:5" },
-  { name = "solved", speed = 7,
-    notes = "g2:5:5:0 c3:5:5:0 e3:5:5:0 g3:5:6:0 g3:5:5:0 - e3:5:5:0 g3:5:5:0 c4:5:6:0 c4:5:5:0 c4:5:4:0 c4:5:2:5" },
+  -- a quiet sine lift, and the same falling back
+  { name = "pick up", speed = 2, notes = "a2:0:2:0 e3:0:3:0 e3:0:2:5" },
+  { name = "put down", speed = 2, notes = "e3:0:2:0 a2:0:2:0 a2:0:1:5" },
+  -- gravel under a rolling stone, played once per square
+  { name = "roll", speed = 5, notes = "c0:6:2:0 c0:6:1:0 c0:6:1:5" },
+  -- stone on stone: a dull tick and a low thump
+  { name = "stack", speed = 2, notes = "f3:6:2:5 c1:1:3:3 c1:1:1:5" },
+  -- a small bell on an open fifth, ringing out with a little vibrato
+  { name = "flag", speed = 6, notes = "a3:0:3:0 e4:0:2:0 e4:0:2:2 e4:0:1:5" },
+  -- a muted thud when a piece can't go that way
+  { name = "bump", speed = 5, notes = "a0:1:3:3 a0:1:1:5" },
+  -- a soft downward glide
+  { name = "undo", speed = 3, notes = "e3:0:2:0 b2:0:2:1 b2:0:1:5" },
+  -- a slow, quiet D major 9 arpeggio
+  { name = "solved", speed = 10,
+    notes = "d2:0:3:0 a2:0:3:0 e3:0:3:0 f#3:0:3:0 c#4:0:2:0 c#4:0:2:2 c#4:0:1:2 c#4:0:1:5" },
 }
 
 -------------------------------------------------------------------------------

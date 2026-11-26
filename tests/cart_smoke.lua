@@ -10,7 +10,8 @@ package.path = "tools/?.lua;" .. package.path
 local pico8_env = require("pico8_env")
 local solve = require("solve")
 
-local LEFT, RIGHT, UP, DOWN, O, X = 0, 1, 2, 3, 4, 5
+local LEFT, RIGHT, UP, DOWN, O, X, PAUSE = 0, 1, 2, 3, 4, 5, 6
+local ENTER = 40
 
 local function noop() end
 
@@ -20,7 +21,7 @@ local function boot(saved)
   local data = saved or {}
 
   for _, name in ipairs({ "cls", "rectfill", "rect", "circfill", "circ", "line", "print", "sfx", "music",
-    "ovalfill", "pset", "fillp", "clip", "pal", "cartdata", "menuitem" }) do
+    "ovalfill", "pset", "fillp", "clip", "pal", "cartdata", "menuitem", "poke" }) do
     rawset(env, name, noop)
   end
   rawset(env, "dget", function(i) return data[i] or 0 end)
@@ -39,6 +40,9 @@ local function boot(saved)
   rawset(env, "btn", function(b) return pressed[b] == true or holding[b] == true end)
   rawset(env, "sin", function(a) return -math.sin(a * 2 * math.pi) end)
   rawset(env, "cos", function(a) return math.cos(a * 2 * math.pi) end)
+  -- devkit keyboard: stat(28, 40) is the enter key
+  local keys = {}
+  rawset(env, "stat", function(n, k) return n == 28 and keys[k] == true end)
   rawset(env, "stop", function(msg) error("cart stop(): " .. tostring(msg)) end)
 
   local src = assert(io.open("pico8/main.lua")):read("*a")
@@ -50,8 +54,9 @@ local function boot(saved)
 
   local game = { env = env, data = data }
 
-  function game.frame(buttons, hold)
-    pressed, holding = {}, {}
+  function game.frame(buttons, hold, scancodes)
+    pressed, holding, keys = {}, {}, {}
+    for _, k in ipairs(scancodes or {}) do keys[k] = true end
     for _, b in ipairs(buttons or {}) do pressed[b] = true end
     for _, b in ipairs(hold or {}) do holding[b] = true end
     env._update60()
@@ -130,8 +135,9 @@ game.frame({ O })
 assert(game.peek().scene == "title", "level 2 is locked on a fresh save")
 game.frame({ LEFT })
 
-game.frame({ O })
-assert(game.peek().scene == "play", "O on the title should start level 1")
+-- enter is pico-8's pause button too: with the enter key down it selects
+game.frame({ PAUSE }, { PAUSE }, { ENTER })
+assert(game.peek().scene == "play", "enter on the title should start level 1")
 local s = game.settle()
 assert(s.lvl == 1 and s.moves == 0)
 
@@ -148,12 +154,24 @@ game.step(path[1])
 game.menu(3)
 assert(game.peek().moves == 0, "restart should reset the moves")
 
--- bumping: a stone that can't go a way shakes and doesn't move
+-- picking up and putting down, with O and with enter
 game.walk(path[1][1], path[1][2])
 game.frame({ O })
 assert(game.peek().held, "O should pick up a stone")
 game.frame({ O })
 assert(not game.peek().held, "O again should put it down")
+game.frame({ PAUSE }, { PAUSE }, { ENTER })
+assert(game.peek().held and not game.peek().menu, "enter should pick up a stone, not open the menu")
+game.frame({}, { PAUSE }, { ENTER })
+game.frame({ O })
+assert(not game.peek().held)
+
+-- the pause button (p / start) opens the menu, and closes it again
+game.frame({ PAUSE })
+assert(game.peek().menu, "the pause button should open the menu")
+game.frame()
+game.frame({ PAUSE })
+assert(not game.peek().menu, "the pause button should close the menu")
 
 -- solve every level with the fewest moves, through the buttons
 local played = 0

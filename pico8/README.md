@@ -14,7 +14,7 @@ The cart is `cairns.p8`, which `#include`s:
 | --- | --- |
 | `levels.lua` | the 17 puzzles: name, fewest moves, board |
 | `rules.lua` | reading a board, rolling, stacking, solved (ported from snowstack) |
-| `main.lua` | title + level select, island and stone renderer, animations, undo, menu, saves, sfx |
+| `main.lua` | title + level select, island and stone renderer, animations, undo, menu, keys, saves, sfx |
 
 Edit the `.lua` files in any editor. PICO-8 picks them up on `run`. To
 export a standalone `.p8.png`/HTML, load the cart in PICO-8 and `save` /
@@ -25,8 +25,13 @@ export a standalone `.p8.png`/HTML, load the cart in PICO-8 and `save` /
 - Title: ⬅️➡️⬆️⬇️ pick a level, 🅾️ play. Levels open one by one as you solve them.
 - Game: ⬅️➡️⬆️⬇️ move the cursor, 🅾️ pick up the stone or flag under it,
   then ⬅️➡️⬆️⬇️ send it that way. 🅾️ or ❎ puts it down again.
-- ❎ with nothing picked up undoes a move. Hold ❎ for the menu: resume, undo,
-  restart, level select. Restart and level select are in PICO-8's pause menu too.
+- ❎ with nothing picked up undoes a move.
+- The menu: press P (Start on a gamepad) or hold ❎. It has resume, undo,
+  restart and back to levels.
+- Enter works like 🅾️ everywhere. PICO-8 normally opens its pause menu on
+  Enter; the cart reads the raw keyboard (devkit mode) to tell Enter from P
+  and suppresses that pause menu (`poke(0x5f30, 1)`), so its own menu opens
+  instead.
 
 While a piece is picked up, the squares it can go to light up: **blue** where
 it would roll to (with a dotted trail), **orange** where it would hop onto a
@@ -55,9 +60,11 @@ last (the title opens on it).
 
 `tools/music.lua` holds everything you hear and compiles it into the cart:
 
-- sfx 0-7, the sound effects, written as short note strings: pick up, put
-  down, the rumble of a rolling stone (once per square), the thunk of a stack,
-  the chime of a planted flag, a bump, undo, and a fanfare when a level is solved.
+- sfx 0-7, the sound effects, written as short note strings and kept soft:
+  quiet sine tones for picking up, putting down and undo, gravel under a
+  rolling stone (once per square), a dull tick and thump when stones stack, a
+  small bell for a planted flag, a muted thud for a bump, and a slow D major 9
+  arpeggio when a level is solved.
 - sfx 8+ and `__music__`: two calm chord loops with no lead melody,
   "high moor" on the title screen (pattern 0) and "sea breeze" in game
   (pattern 4). A plucked sine harp arpeggio over a triangle bass.
