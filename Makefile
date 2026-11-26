@@ -1,4 +1,4 @@
-.PHONY: test unit smoke tokens music music-check run pico8 pico8-preview fetch-lovejs site serve screenshots clean
+.PHONY: test unit smoke tokens music music-check run pico8 play pico8-preview fetch-lovejs site serve screenshots clean
 
 PICO8 ?= pico8
 PORT ?= 8000
@@ -39,6 +39,15 @@ run: pico8
 
 pico8:
 	$(PICO8) -run pico8/cairns.p8
+
+# Export a standalone player (no editor behind it, so Esc reaches the
+# cart's own menu) into dist/cairns.bin/ and open it on macOS.
+play:
+	mkdir -p "$(DIST)"
+	rm -rf "$(DIST)/cairns.bin"
+	"$(PICO8)" pico8/cairns.p8 -export "$(abspath $(DIST))/cairns.bin"
+	@if [ "$$(uname)" = "Darwin" ]; then open "$(DIST)/cairns.bin/cairns.app"; \
+	else echo "Built $(DIST)/cairns.bin/ (players for linux, windows, raspi, macOS)"; fi
 
 # Download the love.js runtime once so `make serve` can run the browser preview player.
 fetch-lovejs:

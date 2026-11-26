@@ -1,8 +1,8 @@
 -- Cart smoke test: boots pico8/main.lua against stubbed PICO-8 graphics,
 -- input and cartdata, then plays the game through its buttons: start from
 -- the title, solve every level with the solver's moves (walking the cursor,
--- picking stones up and sending them), and try undo, the in-game menu
--- (restart, level select) and the saved progress along the way.
+-- picking stones up and sending them), and try undo, restart, the in-game menu
+-- (back to levels) and the saved progress along the way.
 --
 -- Run from the repo root:  luajit tests/cart_smoke.lua
 
@@ -106,10 +106,10 @@ local function boot(saved)
     game.frame()
   end
 
-  -- hold X to open the in-game menu, then pick row r
+  -- the pause button (p / start) opens the in-game menu, then pick row r
   function game.menu(r)
-    for _ = 1, 25 do game.frame({}, { X }) end
-    assert(game.peek().menu, "holding X should open the menu")
+    game.frame({ PAUSE }, { PAUSE })
+    assert(game.peek().menu, "the pause button should open the menu")
     game.frame()
     for _ = 2, r do game.frame({ DOWN }) end
     game.frame({ O })
@@ -149,10 +149,16 @@ game.tap_x()
 s = game.peek()
 assert(s.moves == 0, "X should undo the move")
 
--- restart through the menu
+-- restart: hold X, or press R (scancode 21)
 game.step(path[1])
-game.menu(3)
-assert(game.peek().moves == 0, "restart should reset the moves")
+for _ = 1, 25 do game.frame({}, { X }) end
+game.frame()
+assert(game.peek().moves == 0, "holding X should restart the level")
+assert(not game.peek().menu, "holding X shouldn't open the menu")
+game.step(path[1])
+game.frame({}, {}, { 21 })
+game.frame()
+assert(game.peek().moves == 0, "R should restart the level")
 
 -- picking up and putting down, with O and with enter
 game.walk(path[1][1], path[1][2])
@@ -196,8 +202,8 @@ assert(game.peek().scene == "title", "after the last level the game goes back to
 game.frame({ O })
 assert(game.peek().scene == "play")
 game.settle()
-game.menu(4)
-assert(game.peek().scene == "title", "level select should go to the title")
+game.menu(2)
+assert(game.peek().scene == "title", "back to levels should go to the title")
 
 -- saved progress survives a reboot: start on the last level played
 local again = boot(game.data)

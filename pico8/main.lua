@@ -1,6 +1,6 @@
 -- main.lua
 -- title + level select, the island, front-view stones, rolling and
--- hopping animations, undo, the in-game menu, saved progress,
+-- hopping animations, undo and restart, the in-game menu, saved progress,
 -- sfx and music. the rules live in rules.lua, levels in levels.lua.
 
 -- top-left of the 7x5 board, 16px squares
@@ -45,7 +45,7 @@ local flag_art = {
   pix("a|4888|48888|488888|48822|4|4|4|4|4|4|4|4"),
   pix("a|4.888|488888|48888|4822|4|4|4|4|4|4|4|4"),
 }
-local menu_items = { "resume", "undo", "restart", "back to levels" }
+local menu_items = { "resume", "back to levels" }
 local confetti_c = { 8, 9, 10, 7, 14 }
 
 -- logo letters, 5 rows of pebbles each
@@ -61,18 +61,20 @@ local logo = {
 local scene = "title"
 local flag_x = 0
 
--- keys: enter works like 🅾️, and the pause button (p, or start on a
--- gamepad) opens the cart's own menu instead of pico-8's. pico-8 reports
--- enter as the pause button too, so the raw keyboard (devkit mode,
--- scancode 40 = enter, 88 = keypad enter) tells the two apart.
+-- keys: enter works like 🅾️, r restarts, and the pause button (p, or
+-- start on a gamepad) opens the cart's own menu instead of pico-8's.
+-- pico-8 reports enter as the pause button too, so the raw keyboard
+-- (devkit mode: scancode 40 enter, 88 keypad enter, 21 r) tells them apart.
 poke(0x5f2d, 1)
 local enter, enter_was, pause, pause_was = false, false, false, false
+local rkey, rkey_was = false, false
 
 local function read_keys()
-  local down, p = stat(28, 40) or stat(28, 88), btn(6)
+  local down, p, r = stat(28, 40) or stat(28, 88), btn(6), stat(28, 21)
   enter = down and not enter_was
   pause = p and not pause_was and not down
-  enter_was, pause_was = down, p
+  rkey = r and not rkey_was
+  enter_was, pause_was, rkey_was = down, p, r
   if p then poke(0x5f30, 1) end
 end
 
@@ -246,19 +248,13 @@ local function update_title()
 end
 
 local function update_menu()
-  if menu.wait then
-    if not btn(5) then menu.wait = false end
-    return
-  end
   if btnp(2) then menu.row = (menu.row - 2) % #menu_items + 1 end
   if btnp(3) then menu.row = menu.row % #menu_items + 1 end
   if btnp(5) or pause then menu = nil return end
   if ok() then
     local r = menu.row
     menu = nil
-    if r == 2 then undo() end
-    if r == 3 then restart() end
-    if r == 4 then to_title() end
+    if r == 2 then to_title() end
   end
 end
 
@@ -319,12 +315,14 @@ local function update_play()
     return
   end
 
-  -- hold x for the menu, tap x to put down / undo
+  if rkey then restart() end
+
+  -- tap x to put down / undo, hold x to restart
   if btn(5) then
     xhold = xhold + 1
     if xhold == 20 then
-      menu = { row = 1, wait = true }
-      sfx(0)
+      held = nil
+      restart()
     end
   else
     if xhold > 0 and xhold < 20 then tap_x() end
@@ -553,11 +551,11 @@ local function draw_hud()
   elseif rules_movable_at(st, cur.x, cur.y) then
     hint = "\142 pick up the " .. names[rules_movable_at(st, cur.x, cur.y).kind]
   elseif #hist > 0 then
-    hint = "\151 undo   hold \151 or p: menu"
+    hint = "\151 undo  hold \151 restart  p menu"
   elseif not intro then
-    hint = "find a stone  hold \151 or p: menu"
+    hint = "find a stone        p menu"
   end
-  if xhold > 4 and not menu then
+  if xhold > 4 and #hist > 0 then
     rectfill(0, 119, xhold * 6.4, 119, 10)
   end
   cprint(hint, 121, 6)
@@ -594,15 +592,13 @@ local function draw_play()
       if p.y < 3 then far = far + 1 end
     end
     if far * 2 < #st.pieces then y = 12 end
-    panel(14, y, 113, y + 23)
-    local best, n = levels[lvl][2], #hist
-    cprint("cairns built! " .. n .. " moves", y + 5, 3)
-    cprint(n <= best and "the fewest there are!" or "it can be done in " .. best, y + 13, n <= best and 8 or 13)
+    panel(34, y, 93, y + 14)
+    cprint("cairns built!", y + 5, 3)
   end
   if menu then
-    panel(26, 40, 101, 82)
+    panel(26, 48, 101, 72)
     for i = 1, #menu_items do
-      local y = 37 + i * 9
+      local y = 45 + i * 9
       local on = i == menu.row
       if on then print("\145", 30, y, 8) end
       print(menu_items[i], 40, y, on and 1 or 13)
@@ -671,10 +667,8 @@ local function draw_title()
   rectfill(0, 107, 127, 127, 1)
   local lv = levels[lvl]
   if lvl <= n then
-    local mine = dget(lvl)
-    cprint(lv[1], 109, 7)
-    cprint(mine > 0 and "solved in " .. mine .. " moves" or "not solved yet", 115, 13)
-    cprint("\142 play", 121, 10)
+    cprint(lv[1], 111, 7)
+    cprint("\142 play", 119, 10)
   else
     cprint("solve " .. (lvl - 1) .. " to open it", 115, 6)
   end

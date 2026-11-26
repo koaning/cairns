@@ -103,15 +103,13 @@ function shots:start(env)
 
     if self_.all then
       frame({ O })
-      for _ = 1, 25 do
-        self_.buttons = { [X] = true }
-        coroutine.yield()
-      end
+      frame({ 6 })
       frame(nil, 10)
       frame({ DOWN })
       frame(nil, 10)
       shot("pico8-menu.png")
-      frame({ X })
+      frame({ UP })
+      frame({ O })
       frame(nil, 5)
       while i <= #path do
         pick_up(path[i])

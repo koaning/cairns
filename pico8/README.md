@@ -25,13 +25,18 @@ export a standalone `.p8.png`/HTML, load the cart in PICO-8 and `save` /
 - Title: ⬅️➡️⬆️⬇️ pick a level, 🅾️ play. Levels open one by one as you solve them.
 - Game: ⬅️➡️⬆️⬇️ move the cursor, 🅾️ pick up the stone or flag under it,
   then ⬅️➡️⬆️⬇️ send it that way. 🅾️ or ❎ puts it down again.
-- ❎ with nothing picked up undoes a move.
-- The menu: press P (Start on a gamepad) or hold ❎. It has resume, undo,
-  restart and back to levels.
+- ❎ with nothing picked up undoes a move. Hold ❎ (or press R) to restart
+  the level.
+- P (Start on a gamepad) opens the menu: resume, back to levels.
 - Enter works like 🅾️ everywhere. PICO-8 normally opens its pause menu on
-  Enter; the cart reads the raw keyboard (devkit mode) to tell Enter from P
-  and suppresses that pause menu (`poke(0x5f30, 1)`), so its own menu opens
-  instead.
+  Enter; the cart reads the raw keyboard (devkit mode) to tell Enter, P and R
+  apart and suppresses that pause menu (`poke(0x5f30, 1)`), so its own menu
+  opens instead.
+- Esc belongs to PICO-8 itself when the cart runs inside the PICO-8 app
+  (`make pico8`): it stops the cart and drops you into the console/editor.
+  Type `resume` there (or press Ctrl+R to start over). `make play` exports a
+  standalone player instead, with no editor behind it. In the browser
+  preview Esc opens the menu like P.
 
 While a piece is picked up, the squares it can go to light up: **blue** where
 it would roll to (with a dotted trail), **orange** where it would hop onto a

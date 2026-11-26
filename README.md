@@ -28,7 +28,12 @@ with all 17 of its puzzles.
 
 ```bash
 make pico8    # runs: pico8 -run pico8/cairns.p8 (set PICO8=/path/to/pico8 if needed)
+make play     # exports a standalone player to dist/cairns.bin/ and opens it (macOS)
 ```
+
+Arrows move, 🅾️ / Enter picks a piece up, ❎ undoes, hold ❎ or R restarts,
+P opens the menu. Inside the PICO-8 app Esc goes to PICO-8's editor: type
+`resume` to get back to the game.
 
 ### In a browser (no PICO-8 binary required)
 

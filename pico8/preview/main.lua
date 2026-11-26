@@ -471,10 +471,14 @@ local function make_env()
     chr = string.char, ord = function(s, i) return s:byte(i or 1) end,
     t = function() return love.timer.getTime() - start_time end,
     time = function() return love.timer.getTime() - start_time end,
-    stat = function(n)
+    stat = function(n, k)
       if n == 1 or n == 0 then return instructions / frame_budget end
-      -- devkit keyboard: enter is already button 4 here, so no raw keys
-      if n == 28 or n == 30 then return false end
+      -- devkit keyboard: raw keys by SDL scancode (enter, keypad enter, r)
+      if n == 28 then
+        local name = ({ [40] = "return", [88] = "kpenter", [21] = "r" })[k]
+        return name ~= nil and love.keyboard.isScancodeDown(name)
+      end
+      if n == 30 then return false end
       if n == 7 then return 60 end
       return 0
     end,
