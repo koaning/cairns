@@ -559,6 +559,92 @@ local function capture(path, scale)
   print("saved " .. path)
 end
 
+-- the cart's two frontmatter lines (`-- title`, `-- byline`), read in love.load
+local cart_title, cart_byline = "", ""
+
+-- saves the framebuffer as a picture of a PICO-8 cartridge: the frame (the
+-- same one that becomes __label__) at 2x in the label window, with the cart's
+-- title and byline on the strip under it, like PICO-8 shows its carts
+local function capture_cart(path)
+  local S = 2 -- label scale
+  local LX, LY = 32, 48 -- top left of the label
+  local lines = { cart_title }
+  if #cart_byline * 4 * S > W * S then
+    -- too wide for the strip: wrap "by ... - tagline" at the dash
+    local a, b = cart_byline:match("^(.-) %- (.*)$")
+    lines[2], lines[3] = a or cart_byline, b
+  elseif cart_byline ~= "" then
+    lines[2] = cart_byline
+  end
+  local strip_y = LY + W * S + 12
+  local strip_h = 10 + 16 * #lines
+  local foot_y = strip_y + strip_h + 14
+  local CW, CH = LX * 2 + W * S, foot_y + 10 + 16
+
+  local out = love.image.newImageData(CW, CH)
+  local function rect(x0, y0, x1, y1, c)
+    local col = rgb[c]
+    for y = y0, y1 do
+      for x = x0, x1 do out:setPixel(x, y, col[1], col[2], col[3], 1) end
+    end
+  end
+  local function text(str, x, y, c)
+    for i = 1, #str do
+      local glyph = FONT[str:sub(i, i):lower()]
+      if glyph then
+        for gy = 0, 4 do
+          for gx = 0, 2 do
+            if glyph:sub(gy * 3 + gx + 1, gy * 3 + gx + 1) == "1" then
+              rect(x + gx * S, y + gy * S, x + gx * S + S - 1, y + gy * S + S - 1, c)
+            end
+          end
+        end
+      end
+      x = x + 4 * S
+    end
+  end
+  local function centred(str, y, c)
+    text(str, math.floor((CW - (#str * 4 - 1) * S) / 2), y, c)
+  end
+
+  -- shell: dark outline, grey body, notched corners left transparent
+  rect(4, 0, CW - 5, CH - 1, 0)
+  rect(0, 4, CW - 1, CH - 5, 0)
+  rect(4, 2, CW - 5, CH - 3, 5)
+  rect(2, 4, CW - 3, CH - 5, 5)
+  rect(4, 2, CW - 5, 3, 13) -- top highlight
+  -- grip ridges at the top, coloured dots in the middle
+  for y = 10, 30, 5 do
+    rect(LX, y, LX + 79, y + 1, 0)
+    rect(CW - LX - 80, y, CW - LX - 1, y + 1, 0)
+    rect(LX, y + 2, LX + 79, y + 2, 13)
+    rect(CW - LX - 80, y + 2, CW - LX - 1, y + 2, 13)
+  end
+  for i, c in ipairs({ 8, 9, 10, 11, 12 }) do
+    local x = math.floor(CW / 2) - 27 + (i - 1) * 11
+    rect(x, 15, x + 9, 24, c)
+  end
+  -- label window
+  rect(LX - 4, LY - 4, LX + W * S + 3, LY + W * S + 3, 0)
+  for y = 0, W * S - 1 do
+    for x = 0, W * S - 1 do
+      local col = rgb[fb[math.floor(y / S) * W + math.floor(x / S)] or 0]
+      out:setPixel(LX + x, LY + y, col[1], col[2], col[3], 1)
+    end
+  end
+  -- title strip and the words under it
+  rect(LX - 4, strip_y, LX + W * S + 3, strip_y + strip_h - 1, 0)
+  for i, l in ipairs(lines) do
+    text(l, LX + 6, strip_y + 8 + (i - 1) * 16, i == 1 and 7 or 6)
+  end
+  centred("pico-8 cartridge", foot_y, 6)
+
+  local f = assert(io.open(path, "wb"))
+  f:write(out:encode("png"):getString())
+  f:close()
+  print("saved " .. path)
+end
+
 -- saves the framebuffer as the text of a cart's __label__ section
 local function dump_label(path)
   local rows = {}
@@ -589,7 +675,7 @@ function love.load(args)
   if opts.shots then
     shots = require("shots").new(opts.shots, opts.all ~= nil, capture, opts.label and function()
       dump_label(opts.label)
-    end)
+    end, capture_cart)
   end
   love.graphics.setDefaultFilter("nearest", "nearest")
   image_data = love.image.newImageData(W, W)
@@ -599,6 +685,8 @@ function love.load(args)
   start_time = love.timer.getTime()
 
   local lua, sfx_lines, music_lines = read_cart("cart/cairns.p8")
+  cart_title, cart_byline = lua:match("^%-%- ([^\n]*)\n%-%- ([^\n]*)")
+  cart_title, cart_byline = cart_title or "", cart_byline or ""
   for i, hex in ipairs(sfx_lines) do
     local s = synth.parse_sfx(hex)
     sfx_data[i - 1] = s

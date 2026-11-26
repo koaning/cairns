@@ -1,7 +1,9 @@
 -- Scripted run for `love cairns-p8.love --shots <dir> [--label <file>] [--all]`
 -- (`make screenshots`). It presses the buttons for a player and saves:
 --
---   pico8-cart.png    the title screen with some levels solved
+--   pico8-cart.png    the title screen as a cartridge: the cart label with
+--                     the cart's title and byline, like PICO-8 shows carts
+--   pico8-title.png   the title screen with some levels solved
 --   pico8.png         level 9 with one cairn built and a stone picked up
 --   with --all also:  pico8-solved.png, pico8-menu.png, pico8-hit.png (a
 --                     stone that just stopped against something)
@@ -38,8 +40,9 @@ local function peek(env, name)
   end
 end
 
-function shots.new(dir, all, capture, label)
-  return setmetatable({ dir = dir, all = all, capture = capture, label = label, save = SAVE, buttons = {} }, shots)
+function shots.new(dir, all, capture, label, cartridge)
+  return setmetatable({ dir = dir, all = all, capture = capture, label = label, cartridge = cartridge,
+    save = SAVE, buttons = {} }, shots)
 end
 
 function shots:start(env)
@@ -84,7 +87,8 @@ function shots:start(env)
 
   self.co = coroutine.create(function()
     frame(nil, 50)
-    shot("pico8-cart.png")
+    shot("pico8-title.png")
+    self_.cartridge(self_.dir .. "/pico8-cart.png")
     if self_.label then self_.label() end
 
     frame({ O })
